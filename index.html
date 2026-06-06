@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>송악고등학교 커뮤니티 포털</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght=400;600;700&display=swap');
+        body { 
+            font-family: 'Pretendard', sans-serif; 
+            background-color: #f1f5f9; 
+        }
+        .card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .card:hover { transform: translateY(-3px); box-shadow: 0 15px 20px -5px rgba(0, 0, 0, 0.08); }
+        
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .blur-overlay {
+            backdrop-filter: blur(8px);
+            background-color: rgba(255, 255, 255, 0.8);
+        }
+        
+        /* 시간표 테이블 크기 및 스타일 최적화 */
+        .timetable-table { width: 100%; height: 100%; border-collapse: collapse; table-layout: fixed; }
+        .timetable-table th { background-color: #f8fafc; font-weight: 700; color: #475569; padding: 10px 4px; font-size: 12px; border: 1px solid #e2e8f0; }
+        .timetable-table td { background-color: #ffffff; padding: 12px 4px; font-size: 12px; border: 1px solid #e2e8f0; font-weight: 600; color: #334155; vertical-align: middle; }
+        .timetable-table td.break-time { color: #ef4444; font-weight: 700; background-color: #fef2f2; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-7xl mx-auto flex flex-col gap-6">
+        
+        <header class="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+            <div>
+                <h1 id="main-title" class="text-3xl font-extrabold text-slate-900 tracking-tight">
+                    <span class="text-lime-600">🏫</span> 송악고등학교 커뮤니티
+                </h1>
+                <p id="sub-title" class="text-slate-500 mt-1.5 font-medium text-sm">송악고 학생과 교사를 위한 스마트 디지털 공간입니다.</p>
+                <div class="mt-2 inline-block bg-slate-100 text-slate-700 text-xs font-bold px-4 py-1.5 rounded-full">
+                    <span>📢 현재 접속 상황: </span><span id="login-status" class="text-blue-600">손님 (로그인 필요)</span>
+                </div>
+            </div>
+
+            <div class="flex flex-col items-end gap-2 w-full lg:w-auto">
+                <div id="live-clock" class="text-slate-400 text-xs font-semibold font-mono"></div>
+                
+                <div id="login-form" class="flex flex-wrap gap-2 justify-end items-center bg-slate-50 p-1.5 rounded-2xl border border-slate-200 w-full lg:w-auto">
+                    <input type="text" id="username" placeholder="아이디" class="px-3 py-1.5 rounded-xl border border-slate-300 text-xs focus:outline-none focus:border-blue-500 w-28">
+                    <input type="password" id="password" placeholder="비밀번호" class="px-3 py-1.5 rounded-xl border border-slate-300 text-xs focus:outline-none focus:border-blue-500 w-28">
+                    <button onclick="handleLogin()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-4 py-1.5 rounded-xl transition shadow-sm">로그인</button>
+                </div>
+                <button id="logout-btn" onclick="handleLogout()" class="hidden bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs px-4 py-1.5 rounded-xl transition shadow-sm">로그아웃</button>
+            </div>
+        </header>
+
+        <div id="student-view" class="flex flex-col gap-6">
+            
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                
+                <div class="lg:col-span-4 flex flex-col gap-6">
+                    <div class="card bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col justify-between">
+                        <div class="flex items-center mb-4">
+                            <div class="w-11 h-11 bg-gradient-to-br from-lime-400 to-lime-600 text-white rounded-2xl shadow-md flex items-center justify-center mr-3">
+                                <i class="fa-solid fa-utensils text-lg"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-bold text-slate-800">오늘의 급식</h2>
+                                <p id="meal-date" class="text-slate-400 font-medium font-mono text-xs">로드 중...</p>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 rounded-2xl p-4 border border-slate-50">
+                            <div class="flex items-center mb-2">
+                                <span class="bg-blue-100 text-blue-600 text-[10px] font-bold px-2.5 py-0.5 rounded-full mr-2">중식</span>
+                                <span id="meal-kcal" class="text-slate-400 text-xs font-semibold tracking-tight">--- Kcal</span>
+                            </div>
+                            <ul id="meal-list" class="flex flex-col gap-y-2 text-xs text-slate-600 font-semibold">
+                                <li class="flex items-center text-slate-300 italic">급식 정보를 불러오는 중입니다...</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="card bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col justify-between flex-1">
+                        <div class="w-full">
+                            <div class="flex items-center mb-3">
+                                <div class="w-9 h-9 bg-amber-50 text-amber-500 rounded-xl flex items-center justify-center mr-3 text-sm">
+                                    <i class="fa-solid fa-bullhorn"></i>
+                                </div>
+                                <h3 class="text-base font-bold text-slate-800">송악고 학생회 공지</h3>
+                            </div>
+                            <div class="bg-slate-900 rounded-xl overflow-hidden aspect-video relative flex items-center justify-center text-center p-4">
+                                <div class="text-slate-400 text-xs">
+                                    <i class="fa-solid fa-display text-xl mb-1.5 text-slate-500"></i>
+                                    <p class="font-bold">학생회 공지사항 보드</p>
+                                    <p class="text-[10px] text-slate-500">교육청 구글 프레젠테이션 임베드 영역</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="union-edit-zone" class="hidden mt-3">
+                            <a href="https://docs.google.com/presentation" target="_blank" class="w-full py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition shadow-sm">
+                                <i class="fa-solid fa-wrench"></i> 실시간 공지사항 수정하기
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative lg:col-span-4 bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col justify-between min-h-[380px]">
+                    <div class="w-full flex flex-col h-full">
+                        <div class="flex items-center mb-4">
+                            <div class="w-9 h-9 bg-indigo-50 text-indigo-500 rounded-xl flex items-center justify-center mr-3 text-sm">
+                                <i class="fa-solid fa-table-cells"></i>
+                            </div>
+                            <h3 class="text-base font-bold text-slate-800"><span id="dynamic-class-title">해당 학급</span> 고정 시간표</h3>
+                        </div>
+                        <div class="flex-1 bg-slate-50 rounded-2xl p-2 flex flex-col justify-center items-center overflow-auto h-full min-h-[280px]">
+                            <div id="timetable-content" class="w-full h-full"></div>
+                        </div>
+                    </div>
+
+                    <div id="blur-gate-1" class="blur-overlay absolute inset-0 rounded-[2rem] flex flex-col justify-center items-center p-6 text-center">
+                        <i class="fa-solid fa-lock text-slate-400 text-2xl mb-2"></i>
+                        <p id="gate-1-text" class="text-slate-700 font-bold text-xs leading-relaxed">학교 급식 정보와 학생회 공지 외에는<br><span class="text-blue-600 font-extrabold">학급 로그인 후</span> 나옵니다.</p>
+                    </div>
+                </div>
+
+                <div class="relative lg:col-span-4 bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col gap-4 min-h-[380px]">
+                    <div class="flex items-center mb-1">
+                        <div class="w-9 h-9 bg-sky-50 text-sky-500 rounded-xl flex items-center justify-center mr-3 text-sm">
+                            <i class="fa-solid fa-calendar-days"></i>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-800">2주 수행평가 캘린더</h3>
+                    </div>
+
+                    <div class="flex-1 bg-slate-50 rounded-xl p-3 flex flex-col justify-between border border-slate-100 min-h-[130px]">
+                        <span class="text-[11px] font-bold text-indigo-600 mb-1"><i class="fa-solid fa-caret-right mr-1"></i> 이번 주 일정</span>
+                        <div class="grid grid-cols-5 gap-1.5 text-center text-[10px] h-full items-stretch">
+                            <div class="bg-white p-3 rounded-lg border border-slate-200 flex flex-col justify-center"><span>월</span><strong class="text-slate-700 mt-1">국어수행</strong></div>
+                            <div class="bg-white p-3 rounded-lg border border-slate-100 flex flex-col justify-center"><span>화</span><strong class="text-slate-300 mt-1">-</strong></div>
+                            <div class="bg-white p-3 rounded-lg border border-slate-200 flex flex-col justify-center"><span>수</span><strong class="text-blue-500 font-bold mt-1">수학평가</strong></div>
+                            <div class="bg-white p-3 rounded-lg border border-slate-100 flex flex-col justify-center"><span>목</span><strong class="text-slate-300 mt-1">-</strong></div>
+                            <div class="bg-white p-3 rounded-lg border border-slate-200 flex flex-col justify-center"><span>금</span><strong class="text-emerald-600 font-bold mt-1">영어발표</strong></div>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 bg-slate-50 rounded-xl p-3 flex flex-col justify-between border border-slate-100 min-h-[130px]">
+                        <span class="text-[11px] font-bold text-purple-600 mb-1"><i class="fa-solid fa-caret-right mr-1"></i> 다음 주 예정 일정</span>
+                        <div class="grid grid-cols-5 gap-1.5 text-center text-[10px] h-full items-stretch">
+                            <div class="bg-white p-3 rounded-lg border border-slate-100 flex flex-col justify-center"><span>월</span><strong class="text-slate-300 mt-1">-</strong></div>
+                            <div class="bg-white p-3 rounded-lg border border-slate-200 flex flex-col justify-center"><span>화</span><strong class="text-rose-500 font-bold mt-1">과학제출</strong></div>
+                            <div class="bg-white p-3 rounded-lg border border-slate-100 flex flex-col justify-center"><span>수</span><strong class="text-slate-300 mt-1">-</strong></div>
+                            <div class="bg-white p-3 rounded-lg border border-slate-200 flex flex-col justify-center"><span>목</span><strong class="text-slate-600 mt-1">기/정</strong></div>
+                            <div class="bg-white p-3 rounded-lg border border-slate-100 flex flex-col justify-center"><span>금</span><strong class="text-slate-300 mt-1">-</strong></div>
+                        </div>
+                    </div>
+
+                    <div id="blur-gate-2" class="blur-overlay absolute inset-0 rounded-[2rem] flex flex-col justify-center items-center p-6 text-center">
+                        <i class="fa-solid fa-lock text-slate-400 text-2xl mb-2"></i>
+                        <p id="gate-2-text" class="text-slate-700 font-bold text-xs leading-relaxed">학교 급식 정보와 학생회 공지 외에는<br><span class="text-blue-600 font-extrabold">학급 로그인 후</span> 나옵니다.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-row-2">
+                <h3 class="text-base font-bold text-slate-800 ml-2 mb-3 italic uppercase tracking-wider">방과후 활동</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <a href="https://www.songak.xyz" target="_blank" class="card bg-white p-4 rounded-2xl flex items-center shadow-sm border border-slate-100">
+                        <div class="w-9 h-9 bg-indigo-50 text-indigo-500 rounded-xl flex items-center justify-center mr-3 text-base">
+                            <i class="fa-solid fa-moon"></i>
+                        </div>
+                        <span class="font-bold text-slate-700 text-xs">야간자율학습 신청</span>
+                    </a>
+                    <a href="#" target="_blank" onclick="alert('방과후 학교 만족도 조사 보드로 연결')" class="card bg-white p-4 rounded-2xl flex items-center shadow-sm border border-slate-100">
+                        <div class="w-9 h-9 bg-orange-50 text-orange-500 rounded-xl flex items-center justify-center mr-3 text-base">
+                            <i class="fa-solid fa-square-poll-vertical"></i>
+                        </div>
+                        <span class="font-bold text-slate-700 text-xs">방과후 만족도 조사</span>
+                    </a>
+                    <a href="#" target="_blank" onclick="alert('선택과목 시뮬레이터 구동')" class="card bg-white p-4 rounded-2xl flex items-center shadow-sm border border-slate-100">
+                        <div class="w-9 h-9 bg-emerald-50 text-emerald-500 rounded-xl flex items-center justify-center mr-3 text-base">
+                            <i class="fa-solid fa-chart-pie"></i>
+                        </div>
+                        <span class="font-bold text-slate-700 text-xs">선택과목 시뮬레이터</span>
+                    </a>
+                    <div class="card bg-white p-4 rounded-2xl flex items-center shadow-sm border border-slate-100 opacity-50">
+                        <div class="w-9 h-9 bg-slate-100 text-slate-400 rounded-xl flex items-center justify-center mr-3 text-base">
+                            <i class="fa-solid fa-layer-group"></i>
+                        </div>
+                        <span class="font-bold text-slate-400 text-xs">임시 버튼</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-row-3">
+                <h3 class="text-base font-bold text-slate-800 ml-2 mb-3 italic uppercase tracking-wider">학교 활동</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <a href="#" onclick="openCloud('drive')" class="card bg-white p-4 rounded-2xl flex items-center shadow-sm border-2 border-dashed border-blue-200">
+                        <div class="w-9 h-9 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center mr-3 text-base">
+                            <i class="fa-solid fa-folder-open"></i>
+                        </div>
+                        <span class="font-bold text-blue-600 text-xs">📂 학급별 학습 자료실</span>
+                    </a>
+                    <a href="#" onclick="openCloud('padlet')" class="card bg-white p-4 rounded-2xl flex items-center shadow-sm border-2 border-dashed border-purple-200">
+                        <div class="w-9 h-9 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center mr-3 text-base">
+                            <i class="fa-solid fa-chalkboard-user"></i>
+                        </div>
+                        <span class="font-bold text-purple-600 text-xs">📋 실시간 수업 패들릿</span>
+                    </a>
+                    <div class="card bg-white p-4 rounded-2xl flex items-center shadow-sm border border-slate-100 opacity-50">
+                        <div class="w-9 h-9 bg-slate-100 text-slate-400 rounded-xl flex items-center justify-center mr-3 text-base">
+                            <i class="fa-solid fa-paperclip"></i>
+                        </div>
+                        <span class="font-bold text-slate-400 text-xs">임시 공간</span>
+                    </div>
+                    <div class="card bg-white p-4 rounded-2xl flex items-center shadow-sm border border-slate-100 opacity-50">
+                        <div class="w-9 h-9 bg-slate-100 text-slate-400 rounded-xl flex items-center justify-center mr-3 text-base">
+                            <i class="fa-solid fa-paperclip"></i>
+                        </div>
+                        <span class="font-bold text-slate-400 text-xs">임시 공간</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div id="teacher-view" class="hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                
+                <div class="lg:col-span-4">
+                    <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col justify-between">
+                        <div class="flex items-center mb-4">
+                            <div class="w-11 h-11 bg-gradient-to-br from-lime-400 to-lime-600 text-white rounded-2xl shadow-md flex items-center justify-center mr-3">
+                                <i class="fa-solid fa-utensils text-lg"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-bold text-slate-800">오늘의 급식</h2>
+                                <p class="teacher-meal-date text-slate-400 font-medium font-mono text-xs">로드 중...</p>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 rounded-2xl p-4 border border-slate-50">
+                            <div class="flex items-center mb-2">
+                                <span class="bg-blue-100 text-blue-600 text-[10px] font-bold px-2.5 py-0.5 rounded-full mr-2">중식</span>
+                                <span class="teacher-meal-kcal text-slate-400 text-xs font-semibold tracking-tight">--- Kcal</span>
+                            </div>
+                            <ul class="teacher-meal-list flex flex-col gap-y-2 text-xs text-slate-600 font-semibold">
+                                <li class="flex items-center text-slate-300 italic">급식 정보를 불러오는 중입니다...</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-8 flex flex-col gap-8">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800 ml-2 mb-4 italic uppercase tracking-wider">학교 업무</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <a href="https://docs.google.com/spreadsheets/d/1zjH04mLTu5OGji5-WwKxQ59wOOwfo0L9227uvLAmQlA/edit#gid=1927638407" target="_blank" class="card bg-white p-5 rounded-3xl flex items-center shadow-sm border border-slate-50">
+                                <div class="w-10 h-10 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center mr-3 text-lg"><i class="fa-solid fa-bullhorn"></i></div>
+                                <span class="font-bold text-slate-700 text-sm">송악고 구글 시트</span>
+                            </a>
+                            <a href="https://www.songak.xyz" target="_blank" class="card bg-white p-5 rounded-3xl flex items-center shadow-sm border border-slate-50">
+                                <div class="w-10 h-10 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center mr-3 text-lg"><i class="fa-solid fa-chalkboard-user"></i></div>
+                                <span class="font-bold text-slate-700 text-sm">통합 야간자율학습</span>
+                            </a>
+                            <a href="http://songak.cnehs.kr/main.do" target="_blank" class="card bg-white p-5 rounded-3xl flex items-center shadow-sm border border-slate-50">
+                                <div class="w-10 h-10 bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center mr-3 text-lg"><i class="fa-solid fa-house"></i></div>
+                                <span class="font-bold text-slate-700 text-sm">학교 홈페이지</span>
+                            </a>
+                            <a href="https://docs.google.com/spreadsheets/d/1xqBcH9wBmN3wr4yzCmGVZPSNLl0b97SbUyiZq2IIF08/edit?usp=sharing" target="_blank" class="card bg-white p-5 rounded-3xl flex items-center shadow-sm border border-slate-50">
+                                <div class="w-10 h-10 bg-purple-50 text-purple-500 rounded-2xl flex items-center justify-center mr-3 text-lg"><i class="fa-solid fa-file-lines"></i></div>
+                                <span class="font-bold text-slate-700 text-sm">2학년 이동수업 출석관리</span>
+                            </a>
+                            <a href="https://docs.google.com/spreadsheets/d/1Syynryte8TAgcfF0eY0rduzsfc3J3piYlBbKHECGIEA/edit?usp=sharing" target="_blank" class="card bg-white p-5 rounded-3xl flex items-center shadow-sm border border-slate-50">
+                                <div class="w-10 h-10 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mr-3 text-lg"><i class="fa-solid fa-calendar-days"></i></div>
+                                <span class="font-bold text-slate-700 text-sm">송악고 수업 시간표</span>
+                            </a>
+                            <a href="https://docs.google.com/spreadsheets/d/1R3hrXIM_tEXDK1JL0xnkGrVsYDRfYtbtjEd8RqJdKuA/edit?usp=sharing" target="_blank" class="card bg-white p-5 rounded-3xl flex items-center shadow-sm border border-slate-50">
+                                <div class="w-10 h-10 bg-sky-50 text-sky-500 rounded-2xl flex items-center justify-center mr-3 text-lg"><i class="fa-solid fa-file-lines"></i></div>
+                                <span class="font-bold text-slate-700 text-sm">3학년 이동수업 출석관리</span>
+                            </a>
+                            <a href="https://drive.google.com/file/d/1xKgisT8VNAILbxOkdW6fz8mxwTJi_4f8/view?usp=sharing" target="_blank" class="card bg-white p-5 rounded-3xl flex items-center shadow-sm border border-slate-50">
+                                <div class="w-10 h-10 bg-slate-100 text-slate-600 rounded-2xl flex items-center justify-center mr-3 text-lg"><i class="fa-solid fa-folder-tree"></i></div>
+                                <span class="font-bold text-slate-700 text-sm">통합양식(출결, 여비 등)</span>
+                            </a>
+                            <a href="https://drive.google.com/file/d/1XLRR_YZlRGW2rcrEw_cABBF1u1oN1X-C/view?usp=sharing" target="_blank" class="card bg-white p-5 rounded-3xl flex items-center shadow-sm border border-slate-50">
+                                <div class="w-10 h-10 bg-yellow-50 text-yellow-600 rounded-2xl flex items-center justify-center mr-3 text-lg"><i class="fa-solid fa-phone-volume"></i></div>
+                                <span class="font-bold text-slate-700 text-sm">송악고 내선번호</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800 ml-2 mb-4 italic uppercase tracking-wider">행정 업무</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <a href="https://cne.eduptl.kr/bpm_lgn_lg00_001.do" target="_blank" class="card bg-white p-5 rounded-3xl flex items-center shadow-sm border border-slate-50">
+                                <div class="w-10 h-10 bg-sky-50 text-sky-500 rounded-2xl flex items-center justify-center mr-3 text-lg"><i class="fa-solid fa-clipboard-check"></i></div>
+                                <span class="font-bold text-slate-700 text-sm">충남 업무포털</span>
+                            </a>
+                            <a href="https://send.cne.go.kr/b2cCNE/cne/login.do" target="_blank" class="card bg-white p-5 rounded-3xl flex items-center shadow-sm border border-slate-50">
+                                <div class="w-10 h-10 bg-cyan-50 text-cyan-500 rounded-2xl flex items-center justify-center mr-3 text-lg"><i class="fa-solid fa-envelope-open-text"></i></div>
+                                <span class="font-bold text-slate-700 text-sm">충남 문자메세지 시스템</span>
+                            </a>
+                            <a href="https://www.ealimi.com/" target="_blank" class="card bg-white p-5 rounded-3xl flex items-center shadow-sm border border-slate-50">
+                                <div class="w-10 h-10 bg-teal-50 text-teal-500 rounded-2xl flex items-center justify-center mr-3 text-lg"><i class="fa-solid fa-user-check"></i></div>
+                                <span class="font-bold text-slate-700 text-sm">e알리미</span>
+                            </a>
+                            <a href="https://www.ceti.or.kr/" target="_blank" class="card bg-white p-5 rounded-3xl flex items-center shadow-sm border border-slate-50">
+                                <div class="w-10 h-10 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mr-3 text-lg"><i class="fa-solid fa-chalkboard-user"></i></div>
+                                <span class="font-bold text-slate-700 text-sm">충남 교육청 연수원</span>
+                            </a>
+                            <a href="https://high.adiga.kr/index.do" target="_blank" class="card bg-white p-5 rounded-3xl flex items-center shadow-sm border border-slate-50">
+                                <div class="w-10 h-10 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center mr-3 text-lg"><i class="fa-solid fa-landmark"></i></div>
+                                <span class="font-bold text-slate-700 text-sm">대입 상담 프로그램</span>
+                            </a>
+                            <a href="https://jinhak.cne.go.kr/" target="_blank" class="card bg-white p-5 rounded-3xl flex items-center shadow-sm border border-slate-50">
+                                <div class="w-10 h-10 bg-yellow-50 text-yellow-600 rounded-2xl flex items-center justify-center mr-3 text-lg"><i class="fa-solid fa-lightbulb"></i></div>
+                                <span class="font-bold text-slate-700 text-sm">충남진학있슈</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+    let currentMode = "guest"; 
+    let currentClass = "";     
+
+    // 2026학년도 1학기 PDF 교과명 번역 자동화 데이터셋
+    const timetableDatabase = {
+        "0101": [
+            ["공통수학1", "통합과학1", "공통국어1", "음악", "공통영어1", "자율", "X"], // 월
+            ["음악", "공통영어1", "진로", "한국사1", "공통수학1", "과학1", "공통영어1"], // 화
+            ["사회", "공통영어1", "공통국어", "공통수학1", "공통수학1", "동아리", "동아리"], // 수
+            ["공통국어", "음악", "한국사1", "공통영어1", "공통수학1", "과학1", "사회1"], // 목
+            ["사회", "공통영어1", "과실1", "공통영어1", "공통국어1", "자율", "자율"] // 금
+        ],
+        "0102": [
+            ["과학1", "공통수학1", "기 / 정", "공통국어1", "공통수학1", "과학1", "공통수학1"],
+            ["한국사1", "공통수학1", "공통국어", "공통영어1", "한국사1", "공통영어1", "공통수학1"],
+            ["공통영어1", "기 / 정", "공통수학1", "공통수학1", "공통수학1", "동아리", "동아리"],
+            ["통합과학1", "공통영어1", "공통국어1", "사과탐 A", "미술", "영어1", "과학1"],
+            ["공통수학1", "통합사회", "공통국어1", "과방실", "공통영어1", "자율", "자율"]
+        ],
+        "0301": [
+            ["사과탐 A", "사과탐 B", "수학 A", "사과탐 B", "수학 A", "자습", "X"], 
+            ["대수", "영어1", "사과탐 A", "문학", "수학 A", "수학 B", "영어1"],
+            ["수학 A", "문학", "영어1", "대수", "동아리", "동아리", "X"],
+            ["문학", "기 / 정", "대수", "영어1", "사과탐 A", "스포츠", "문학"],
+            ["중+일", "대수", "수학 A", "수학 B", "영어1", "지출", "자율"]
+        ]
+    };
+
+    function updateClock() {
+        const clockElement = document.getElementById('live-clock');
+        const now = new Date();
+        clockElement.innerText = now.toLocaleString('ko-KR', { 
+            year: 'numeric', month: '2-digit', day: '2-digit', 
+            hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false 
+        });
+    }
+    setInterval(updateClock, 1000);
+
+    // 오픈 API 수신 및 멀티뷰 멀티 렌더링 엔진 개편
+    async function fetchMeal() {
+        const listContainers = document.querySelectorAll('#meal-list, .teacher-meal-list');
+        const kcalContainers = document.querySelectorAll('#meal-kcal, .teacher-meal-kcal');
+        const dateContainers = document.querySelectorAll('#meal-date, .teacher-meal-date');
+        
+        const now = new Date();
+        const dateOptions = { month: 'long', day: 'numeric', weekday: 'long' };
+        
+        dateContainers.forEach(el => el.innerText = now.toLocaleDateString('ko-KR', dateOptions));
+
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const today = `${year}${month}${day}`;
+        
+        const apiKey = '2c792cf6bef54883844ae1bc214111cd';
+        const url = `https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${apiKey}&Type=json&ATPT_OFCDC_SC_CODE=N10&SD_SCHUL_CODE=8140093&MLSV_YMD=${today}`;
+
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.mealServiceDietInfo) {
+                const row = data.mealServiceDietInfo[1].row[0];
+                kcalContainers.forEach(el => el.innerText = row.CAL_INFO);
+                
+                const menuRaw = row.DDISH_NM.replace(/\([^)]*\)/g, "");
+                const menuArray = menuRaw.split('<br/>').filter(m => m.trim() !== "");
+                
+                let htmlContent = '';
+                menuArray.forEach(item => {
+                    htmlContent += `<li class="flex items-center"><span class="w-1.5 h-1.5 bg-sky-400 rounded-full mr-2.5 flex-shrink-0"></span>${item.trim()}</li>`;
+                });
+                
+                listContainers.forEach(el => el.innerHTML = htmlContent);
+            } else {
+                listContainers.forEach(el => el.innerHTML = "<li class='text-slate-400 font-normal'>오늘은 등록된 급식 정보가 없습니다.</li>");
+                kcalContainers.forEach(el => el.innerText = "0 Kcal");
+            }
+        } catch (error) {
+            console.error("API Error:", error);
+            listContainers.forEach(el => el.innerHTML = "<li class='text-red-400'>데이터 추출 중 오류 발생</li>");
+        }
+    }
+
+    function handleLogin() {
+        const idInput = document.getElementById('username').value.trim();
+        const pwInput = document.getElementById('password').value.trim();
+
+        const statusLabel = document.getElementById('login-status');
+        const mainTitle = document.getElementById('main-title');
+        const subTitle = document.getElementById('sub-title');
+        
+        const gate1 = document.getElementById('blur-gate-1');
+        const gate2 = document.getElementById('blur-gate-2');
+
+        // 1. 교사용 마스터 분기
+        if (idInput === "songak" && pwInput === "1234") {
+            alert("🔒 교사용 마스터 관리자 모드로 진입합니다.");
+            currentMode = "teacher";
+            
+            statusLabel.innerText = "교사용 (관리자 모드)";
+            statusLabel.className = "text-rose-600 font-bold";
+            mainTitle.innerHTML = '<span class="text-lime-600">🏢</span> 송악고 업무 포털';
+            subTitle.innerText = "선생님들의 효율적인 업무를 위한 대시보드입니다.";
+
+            document.getElementById('student-view').classList.add('hidden');
+            document.getElementById('teacher-view').classList.remove('hidden');
+            
+            toggleLoginFields(true);
+            return;
+        }
+
+        // 2. 학생회 전용 관리 계정 분기
+        if (idInput === "union" && pwInput === "9999") {
+            alert("✨ 송악고등학교 학생회 계정 로그인 성공!");
+            currentMode = "union";
+            statusLabel.innerText = "학생회 모드";
+            statusLabel.className = "text-amber-500 font-bold";
+            
+            // 학생회 공지 편집 버튼 보이기
+            document.getElementById('union-edit-zone').classList.remove('hidden');
+            
+            // 2단락, 3단락 가로 행 전체 숨김 처리
+            document.getElementById('section-row-2').classList.add('hidden');
+            document.getElementById('section-row-3').classList.add('hidden');
+
+            // 자물쇠 고정창 안내 멘트 개편 스위칭
+            document.getElementById('gate-1-text').innerHTML = "시간표와 캘린더는<br><span class='text-amber-600 font-extrabold'>학급용으로 로그인</span> 해야 정보가 뜹니다.";
+            document.getElementById('gate-2-text').innerHTML = "시간표와 캘린더는<br><span class='text-amber-600 font-extrabold'>학급용으로 로그인</span> 해야 정보가 뜹니다.";
+            
+            toggleLoginFields(true);
+            return;
+        }
+
+        // 3. 학급별 4자리 계정 분기
+        const classRegex = /^(0[1-3])([0-9]{2})$/; 
+        if (classRegex.test(idInput) && idInput === pwInput) {
+            const grade = parseInt(idInput.substring(0, 2), 10);
+            const ban = parseInt(idInput.substring(2, 4), 10);
+
+            if ((grade === 1 || grade === 2) && ban > 8) {
+                alert(`❌ 로그인 실패: ${grade}학년은 8반까지 있습니다.`);
+                return;
+            }
+            if (grade === 3 && ban > 6) {
+                alert("❌ 로그인 실패: 3학년은 6반까지 있습니다.");
+                return;
+            }
+            if (ban === 0) {
+                alert("❌ 올바른 학급 코드가 아닙니다.");
+                return;
+            }
+
+            alert(`✅ ${grade}학년 ${ban}반 로그인 성공!`);
+            currentMode = "student";
+            currentClass = idInput;
+
+            gate1.classList.add('hidden');
+            gate2.classList.add('hidden');
+
+            statusLabel.innerText = `${grade}학년 ${ban}반`;
+            statusLabel.className = "text-indigo-600 font-bold";
+            document.getElementById('dynamic-class-title').innerText = `${grade}학년 ${ban}반`;
+
+            renderTimetable(idInput);
+            toggleLoginFields(true);
+            return;
+        }
+
+        alert("❌ 아이디 또는 비밀번호가 올바르지 않습니다.");
+    }
+
+    // 시간표 빌드업 엔진
+    function renderTimetable(classCode) {
+        const container = document.getElementById('timetable-content');
+        const data = timetableDatabase[classCode] || [
+            ["기 / 정", "대수", "영어1", "사과탐 A", "문학", "자율", "X"],
+            ["문학", "수학 A", "영어1", "진로", "사과탐 B", "국어", "자율"],
+            ["영어1", "문학", "대수", "한국사1", "중+일", "동아리", "동아리"],
+            ["한국사1", "과학1", "영어1", "대수", "문학", "기 / 정", "X"],
+            ["사과탐 C", "대수", "영어1", "스포츠", "문학", "자율", "자율"]
+        ];
+
+        let html = `<table class="timetable-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 14%">교시</th>
+                                <th>월</th><th>화</th><th>수</th><th>목</th><th>금</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+        
+        for (let period = 0; period < 7; period++) {
+            html += `<tr>
+                        <td class="font-bold bg-slate-100 text-slate-500">${period + 1}</td>`;
+            for (let day = 0; day < 5; day++) {
+                const subject = data[day][period] || "-";
+                const isX = (subject === "X" || subject === "x");
+                html += `<td class="${isX ? 'break-time' : ''}">${subject}</td>`;
+            }
+            html += `</tr>`;
+        }
+        html += `</tbody></table>`;
+        container.innerHTML = html;
+    }
+
+    function handleLogout() {
+        if(!confirm("포털 시스템에서 로그아웃합니까?")) return;
+        location.reload();
+    }
+
+    function toggleLoginFields(isLoggedIn) {
+        if(isLoggedIn) {
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('logout-btn').classList.remove('hidden');
+        }
+    }
+
+    function openCloud(type) {
+        if (currentMode === "guest" || currentMode === "union") {
+            alert("🔒 학급 공용 계정(ex. 0101)으로 로그인하셔야 전용 학습 클라우드로 연결됩니다.");
+            return;
+        }
+        if (type === 'drive') {
+            alert(`[교육청 계정 연동] ${currentClass}반 구글 드라이브 학습 자료실을 새창에서 열어줍니다.`);
+            window.open("https://drive.google.com", "_blank");
+        } else if (type === 'padlet') {
+            alert(`[교육청 계정 연동] ${currentClass}반 전용 실시간 수업 패들릿 보드를 새창에서 열어줍니다.`);
+            window.open("https://padlet.com", "_blank");
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        updateClock();
+        fetchMeal();
+    });
+    </script>
+</body>
+</html>
